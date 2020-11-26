@@ -11,7 +11,7 @@ The structure followed for my code samples is the following:
 |   ├── Documentation
 ````
 
-These are the games I have developed since I started my undergraduate studies in 2015, to the present day:
+These are the games I have developed since I started my undergraduate studies in 2015, to the present day(2020):
 
 * Tetris(Racket) (2015): Consist of project made for the course of functional programming, coded in Racket programming language, in my first semester of my undergraduate studies. Recreation of tetris.
 * Pacman (2017): Programmed in Python with Pygame. Game developed as a project for OOP course, co-developed with a classmate. Recreation of the classic game Pacman, using OOP logic and design patterns
