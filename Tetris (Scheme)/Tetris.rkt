@@ -1,3 +1,4 @@
+#lang racket
 (require (lib "graphics.ss" "graphics"))
 (open-graphics)
 (define game (open-viewport "Tetris" 1500 900))
@@ -1310,7 +1311,7 @@
 
 ;DOWN
 (define (down y black jack baby)
-  (if (>= baby 0)
+  (when (>= baby 0)
      (if (<= (vector-ref (vector-ref jack baby) 1) y)
       (begin  (clear-figure (vector-ref (vector-ref jack baby) 0)
                                       (vector-ref (vector-ref jack baby) 1)
@@ -1331,9 +1332,9 @@
 
 ;CHANGE JACK
 (define (+down y jack baby)  
-  (if (>= baby 0)
-      (if (<= (vector-ref (vector-ref jack baby) 1) y)
-      (if (<= (+ 22 (vector-ref (vector-ref jack baby) 1)) 620)
+  (when (>= baby 0)
+      (when (<= (vector-ref (vector-ref jack baby) 1) y)
+      (when (<= (+ 22 (vector-ref (vector-ref jack baby) 1)) 620)
       (begin (fill jack baby (vector (vector-ref (vector-ref jack baby) 0)
                                      (+ 2200 (vector-ref (vector-ref jack baby) 1))
                                      (vector-ref (vector-ref jack baby) 2)
@@ -1350,8 +1351,8 @@
   )
 ;CHANGE PLACE
 (define (+place y even flow)
-         (if (>= flow 0)
-             (if (<= (vector-ref (vector-ref even flow) 1) y)
+         (when (>= flow 0)
+             (when (<= (vector-ref (vector-ref even flow) 1) y)
              (begin
              (fill even flow (vector
                               (vector-ref (vector-ref even flow) 0)
@@ -1370,7 +1371,7 @@
 
 ;CHANGE DON'T TOUCH VECTOR
 (define (+dtouch y mr wolf)
-         (if (>= wolf 0)
+         (when (>= wolf 0)
              (begin
              (fill mr wolf (vector
                               (vector-ref (vector-ref mr wolf) 0)
@@ -1403,7 +1404,7 @@
                )
               (tetris width length x y number 1 colour 'null vecindex dindex pindex score)
               
-          (if (and (>= (posn-x (query-mouse-posn game)) 170)
+          (when (and (>= (posn-x (query-mouse-posn game)) 170)
                (<= (posn-x (query-mouse-posn game)) 220)
                (>= (posn-y (query-mouse-posn game)) 4)
                (<= (posn-y (query-mouse-posn game)) 50)
@@ -3329,6 +3330,7 @@
       )
 
 (define (startup)
+  (begin
   ((draw-viewport game) "black")
   (((draw-pixmap-posn "easy-hard.jpg") game) (make-posn 600 225))
   (if (get-mouse-click game)
@@ -3351,7 +3353,7 @@
             (sleep 1)
             (tetris 442 532 530 4 1  0 (roulette) 'null 0 0 0 0)
             )
-          (if (and (>= (posn-x (query-mouse-posn game)) 335)
+          (when (and (>= (posn-x (query-mouse-posn game)) 335)
                (<= (posn-x (query-mouse-posn game)) 855)
                (>= (posn-y (query-mouse-posn game)) 388)
                (<= (posn-y (query-mouse-posn game)) 413)
@@ -3374,6 +3376,7 @@
           )
       (startup)
       )
+  )
   )
 
 
