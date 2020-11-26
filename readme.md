@@ -2,14 +2,14 @@
 
 My name is Juan Pablo Ospina Bustamante
 The structure followed for my code samples is the following:
-‘‘‘
+
+````
 ├── Project Name
 │   ├── Source Code
 │   │   ├── Gamefiles
 │   │ 
 |   ├── Documentation
-
-
+````
 
 These are the games I have developed since I started my undergraduate studies in 2015, to the present day:
 
