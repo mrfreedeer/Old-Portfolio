@@ -174,9 +174,35 @@ class Invidot(pygame.sprite.Sprite):
         self.rect.x = x
         self.rect.y = y
 
-class Powerpellets(pygame.sprite.Sprite):
+class Observer(object):
+    def update(observable, arg):
+        pass
+
+class Observable(object):
+    def __init__(self):
+        self.observers = []
+        
+    def add_observer(self, observer):
+        if not observer in self.observers:
+            self.observers.append(observer)
+            
+    def delete_observer(self, observer):
+        if observer in self.observers:
+            self.observers.remove(observer)
+            
+    def delete_observers(self):
+        if self.observers:
+            del self.observers[:]
+            
+    def notify_observers(self, *args, **kwargs):
+        for observer in self.observers:
+            observer.estado_debil()
+
+
+class Powerpellets(pygame.sprite.Sprite, Observable):
     def __init__(self, x, y, path):
         pygame.sprite.Sprite.__init__(self)
+        Observable.__init__(self)
         self.image = path
         self.rect = self.image.get_rect()
         self.rect.x = x
@@ -319,20 +345,30 @@ class Builder(object):
     def buildscore(self):
         return Score(self._dotnum)
 class Score(object):
+    __instance = None
+    def __new__(cls, pacnum):
+        if Score.__instance is None:
+            Score.__instance = object.__new__(cls)
+        return Score.__instance
     def __init__(self, pacnum):
         self._dotnum = pacnum
         self._consumed = 0
         self._ppellets = 4
+        self._score = 0
     def consume(self):
         self._dotnum -= 1
         self._consumed += 1
+        self._score += 10
+    def consumeghost(self, multiply):
+        self._score += 200 * multiply
     def bigconsume(self):
         if self._ppellets > 0:
             self._dotnum -= 1
             self._ppellets -= 1
             self._consumed += 1
+        self._score += 50
     def getScore(self):
-        return self._consumed * 10 + (4 - self._ppellets) * 50
+        return self._score
 
 class Life(pygame.sprite.Sprite):
     def __init__(self, image, x, y):
@@ -343,6 +379,11 @@ class Life(pygame.sprite.Sprite):
         self.rect.y = y
 
 class Maze(object):
+    __instance = None
+    def __new__(cls, string, free, height, DOCK, pantalla):
+        if Maze.__instance is None:
+            Maze.__instance = object.__new__(cls)
+        return Maze.__instance
     def __init__(self, string, free, height, DOCK, pantalla):
         self._d = DOCK
         self._p = pantalla
@@ -399,6 +440,12 @@ class Maze(object):
             return True
         else:
             return False
+    def drawDoor(self, enable): ################################################################
+        z6 = Xline(self._d[0] + 8 * self._t, self._d[1] + 8 * self._t, self._t)
+        if enable:
+            self._sprites.add(z6)
+        elif not enable:
+            self._sprites.remove(z6)
 
     def getSprites(self):
         return self._sprites

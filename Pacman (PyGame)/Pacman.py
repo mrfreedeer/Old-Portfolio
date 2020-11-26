@@ -23,18 +23,34 @@ def check(before, jp):
     else:
         return False
 
-
-
+def inBox(obj, DOCK, TILESIZE):
+    if obj.rect.x >= DOCK[0] + 5 * TILESIZE and obj.rect.x <= DOCK[0] + 10* TILESIZE:
+        if obj.rect.y +TILESIZE>= DOCK[1] + 7 * TILESIZE and obj.rect.y +TILESIZE <= DOCK[1] + 10 * TILESIZE:
+            return True
+        else:
+            return False
+    else:
+        return False
+def onBox(obj, DOCK, TILESIZE):
+    if obj.rect.x >= int(DOCK[0] + 8 * TILESIZE) and obj.rect.x <= int(DOCK[0] + 9 * TILESIZE):
+        if obj.rect.y >= int(DOCK[1] + 7 * TILESIZE) and obj.rect.y <= int(DOCK[1] + 8 * TILESIZE):
+            return True
+        else:
+            return False
+    else:
+        return False
 if __name__ == '__main__':
     pygame.init()   #Inicializa a Pygame
     pygame.font.init()
     pygame.mixer.init()
 
     turn = counter = time = slowturn = d = 0
-    mazelocation = "/home/juan/Escritorio/Project/maze.txt"
+    blinkyturn = pinkyturn = inkyturn = clydeturn = 0
+    mazelocation = "maze.txt"
     FREE = 200
     quit = collision = pendingturn = mouthchange = closed = move = False
     pause = pauseStart = habil =  redraweverything  = timefinish = blinker = hadpause = False
+    blinkychase = pinkychase = inkychase = clydechase = False
     start = True
     speed  = 1
     turnspeed = speed * 2
@@ -84,7 +100,7 @@ if __name__ == '__main__':
     for h in range(1,8):
         image = pygame.image.load(string+str(h)+png).convert_alpha()
         deathimages.append(pygame.transform.scale(image,(playersize,playersize)))
-
+    consumed = 0
 
     jp = bob.buildplayer(currentpac)
     playershadow = bob.buildplayer(currentpac)
@@ -119,24 +135,42 @@ if __name__ == '__main__':
     gameovertxt = font.render("GAME OVER", True, red)
     powerpellets.draw(pantalla)
 
+    z6 = Xline(DOCK[0] + 8 * TILESIZE, DOCK[1] + 8 * TILESIZE, TILESIZE)
+    pacmazesprites = pygame.sprite.Group()
+    blinkysprites = pygame.sprite.Group()
+    inkysprites = pygame.sprite.Group()
+    pinkysprites = pygame.sprite.Group()
+    clydesprites = pygame.sprite.Group()
+    for x in mazesprites:
+        pacmazesprites.add(x)
+        blinkysprites.add(x)
+        pinkysprites.add(x)
+        inkysprites.add(x)
+        clydesprites.add(x)
+
     fghost = GhostFactory()
-    blinky = fghost.get_ghost(0, DOCK, TILESIZE, playersize, mazesprites)
-    clyde = fghost.get_ghost(1, DOCK, TILESIZE, playersize, mazesprites)
-    inky = fghost.get_ghost(2, DOCK, TILESIZE, playersize, mazesprites)
-    pinky = fghost.get_ghost(3, DOCK, TILESIZE, playersize, mazesprites)
+    blinky = fghost.get_ghost(0, DOCK, TILESIZE, playersize, blinkysprites) #
+    clyde = fghost.get_ghost(1, DOCK, TILESIZE, playersize, clydesprites) #
+    inky = fghost.get_ghost(2, DOCK, TILESIZE, playersize, inkysprites) #
+    pinky = fghost.get_ghost(3, DOCK, TILESIZE, playersize, pinkysprites) #
 
     g_ghost = pygame.sprite.Group()
     g_ghost.add(blinky)
     g_ghost.add(clyde)
     g_ghost.add(inky)
     g_ghost.add(pinky)
+
+    for pp in powerpellets:
+        for ghost in g_ghost:
+            pp.add_observer(ghost)
+
     d = 0
     before = [jp.rect.x, jp.rect.y]
     channel = pygame.mixer.Channel(0)
     dying = pygame.mixer.Sound('pacman_death.wav')
     chomp = pygame.mixer.Sound('pacman_chomp.wav')
     ready = pygame.mixer.Sound('pacman_beginning.wav')
-
+    multiply = 1
     lives = pygame.sprite.Group()
     livesc = []
     image = pacimages[jp.Right()]
@@ -145,6 +179,8 @@ if __name__ == '__main__':
         y = Life(image, scoreposx + (5 + x) * TILESIZE, scoreposy)
         lives.add(y)
         livesc.append(y)
+
+    pacmazesprites.add(z6)
     while True:
         if jp._lives == 0:
             pantalla.blit(pygame.Surface((bob.tilesize()*4, bob.tilesize())), (scoreposx + 5 * bob.tilesize(), scoreposy))
@@ -227,6 +263,10 @@ if __name__ == '__main__':
                 #Dibuja un Rectangulo Negro encima del jugador para luego
                 #Redibujarlo en otra posición
                 pygame.draw.rect(pantalla, black, (jp.posx, jp.posy, playersize, playersize) )
+                pygame.draw.rect(pantalla, black, (blinky.rect.x, blinky.rect.y, playersize, playersize) )
+                pygame.draw.rect(pantalla, black, (clyde.rect.x, clyde.rect.y, playersize, playersize) )
+                pygame.draw.rect(pantalla, black, (inky.rect.x, inky.rect.y, playersize, playersize) )
+                pygame.draw.rect(pantalla, black, (pinky.rect.x, pinky.rect.y, playersize, playersize) )
 
                 #Maneja los eventos de teclado y ventana
                 for event in pygame.event.get():
@@ -247,7 +287,7 @@ if __name__ == '__main__':
                         #Esta función (spritecollideany) retorna None cuando no hay
                         #colisiones, y un Sprite cuando Sí
 
-                        ls = pygame.sprite.spritecollideany(playershadow, mazesprites, False)
+                        ls = pygame.sprite.spritecollideany(playershadow, pacmazesprites)
                         if ls != None:
                             collision = True
                             if mantain != key:
@@ -273,7 +313,10 @@ if __name__ == '__main__':
                 #Manejo de movimiento de Pacman
                 #Se mueve después de un número de turnos, para que
                 #el movimiento no sea demasiado rápido
-
+                if onBox(blinky, DOCK, TILESIZE):
+                    pass
+                    #blinky.valid_move('l')
+                    #mazesprites.add(z6)
                 if move and turn >= turnspeed or start:
                     if not check(before,jp):
                         pygame.mixer.pause()
@@ -311,13 +354,101 @@ if __name__ == '__main__':
                     #Se actualizan los grupos de Sprite y los Sprite
                     #para actualizar la posicion de los Sprites en la
                     #pantalla y redibujarlos
-                    g.update(mazesprites, m.getWidth())
-                    g_ghost.update(jp, mazesprites, m.getWidth())
-                    jp.update(mazesprites, m.getWidth())
+
+                    pacdotscollided = pygame.sprite.Group()
+
+                    for x in g_ghost:
+                        if jp.crashed(x):
+                            if x.state == 'activo':
+                                channel.play(dying)
+                                jp.die(deathimages, pantalla)
+                                key = mantain = pygame.K_LEFT
+                                move = False
+                                start = keep = True
+                                last_time = pygame.time.get_ticks()
+                                currentpac = pacimages[jp.Left()]
+                                l = livesc[len(livesc) - 1]
+                                l.kill()
+                                livesc.remove(l)
+                                z6.remove(mazesprites)
+                                for i in g_ghost:
+                                    i.estado_start()
+                                while keep:
+                                    diff_time_ms = pygame.time.get_ticks()
+                                    if diff_time_ms - last_time >= 1200:
+                                        keep = False
+                            elif x.state == 'debil':
+                                x.estado_comido()
+                                z6.remove(mazesprites)
+                                score.consumeghost(multiply)
+                                multiply += 1
+
+
+
+                    g.update(pacmazesprites, m.getWidth())
+                    if blinkyturn >= turnspeed:
+                        blinkychase = True
+                        blinkyturn = 0
+                    else:
+                        blinkychase = False
+                    if pinkyturn >= turnspeed * 2:
+                        pinkychase = True
+                        pinkyturn = 0
+                    else:
+                        pinkychase = False
+                    if inkyturn >= turnspeed * 3:
+                        inkychase = True
+                        inkyturn = 0
+                    else:
+                        inkychase = False
+                    if clydeturn >= turnspeed * 3:
+                        clydechase = True
+                        clydeturn = 0
+                    else:
+                        clydechase = False
+                    blinky.update(jp, m.getWidth(), blinkychase)
+                    pinky.update(jp, m.getWidth(), pinkychase)
+                    inky.update(jp, m.getWidth(), inkychase)
+                    clyde.update(jp, m.getWidth(), clydechase)
+                    #g_ghost.update(jp, m.getWidth())
+                    reiniciar = True
+                    stillinbox = False
+                    for x in g_ghost:
+                        if inBox(x, DOCK, TILESIZE):
+                            if x == inky:
+                                z6.remove(inkysprites)
+                            if x == pinky:
+                                z6.remove(pinkysprites)
+                            if x == blinky:
+                                z6.remove(blinkysprites)
+                            if x == clyde:
+                                z6.remove(clydesprites)
+                        else:
+                            if x == inky:
+                                inkysprites.add(z6)
+                            if x == pinky:
+                                pinkysprites.add(z6)
+                            if x == blinky:
+                                blinkysprites.add(z6)
+                            if x == clyde:
+                                clydesprites.add(z6)
+
+
+                        if x.getState() == 'debil':
+                            reiniciar = False
+                        col_ls = pygame.sprite.spritecollide(x, pacdots, False)
+                        pacdotscollided.add(col_ls)
+                    if reiniciar:
+                        multiply = 1
+                    jp.update(pacmazesprites, m.getWidth())
                     playershadow.changedir(key, jp)
 
                     #Se dibuja a Pacman
                     g.draw(pantalla)
+
+                    #if blinky.state != 'start': ##################################################
+                    #    m.drawDoor(True)
+                    pacdotscollided.draw(pantalla)
                     g_ghost.draw(pantalla)
 
                     '''
@@ -333,23 +464,8 @@ if __name__ == '__main__':
                     #que exista un movimiento pendiente
                     #que no se había podido realizar
                     #debido a colisiones con el laberinto
-                    ls = pygame.sprite.spritecollideany(playershadow, mazesprites, False)
-                    for x in g_ghost:
-                        if jp.crashed(x):
-                            channel.play(dying)
-                            jp.die(deathimages, pantalla)
-                            key = mantain = pygame.K_LEFT
-                            move = False
-                            start = keep = True
-                            last_time = pygame.time.get_ticks()
-                            currentpac = pacimages[jp.Left()]
-                            l = livesc[len(livesc) - 1]
-                            l.kill()
-                            livesc.remove(l)
-                            while keep:
-                                diff_time_ms = pygame.time.get_ticks()
-                                if diff_time_ms - last_time >= 1200:
-                                    keep = False
+                    ls = pygame.sprite.spritecollideany(playershadow, pacmazesprites)
+
 
                     if ls == None and pendingturn:
                         mantain = key
@@ -372,6 +488,10 @@ if __name__ == '__main__':
 
 
                 if len(powercollide) != 0:
+
+                    for pp in powerpellets:
+                        pp.notify_observers()
+
                     for o in powercollide:
                         pantalla.blit(pacdotmagic, (o.rect.x, o.rect.y))
                         o.kill()
@@ -420,6 +540,10 @@ if __name__ == '__main__':
                     pantalla.blit(scoremagic, (scoreposx,scoreposy))
                     pantalla.blit(scorepts, (scoreposx, scoreposy))
                 turn += 1
+                blinkyturn += 1
+                pinkyturn += 1
+                inkyturn += 1
+                clydeturn += 1
                 d += 1
                 if habil:
                     slowturn += 1

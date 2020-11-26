@@ -2,12 +2,19 @@ import pygame
 from pygame.locals import *
 import math, os, sys
 from sys import exit
-
+def onBox(obj, DOCK, TILESIZE):
+    if obj.rect.x >= int(DOCK[0] + 8 * TILESIZE) and obj.rect.x <= int(DOCK[0] + 9 * TILESIZE):
+        if obj.rect.y >= int(DOCK[1] + 7 * TILESIZE) and obj.rect.y <= int(DOCK[1] + 8 * TILESIZE):
+            return True
+        else:
+            return False
+    else:
+        return False
 def cargar_imagen(nombre, size, transparent=False):
      try: imagen = pygame.image.load(nombre)
      except pygame.error as message:
           raise SystemExit(message)
-     imagen = imagen.convert()
+     imagen = imagen.convert_alpha()
      imagen = pygame.transform.scale(imagen, (size,size))
      if transparent:
           color = imagen.get_at((0,0))
@@ -20,7 +27,7 @@ class Ghost(pygame.sprite.Sprite):
         self._d = dock
         self._t = tile
         self._m = mazesprites
-        self.state = 'activo'       #estados: activo, debil, comido, parpadear
+        self.state = 'start'       #estados: start, activo, debil, comido, parpadear
         self.stop = False
         self._activo = []           #lista que contiene las imagenes del estado activo del fantasma
         self._debil = []            #lista que contiene las imagenes del estado debil
@@ -31,23 +38,22 @@ class Ghost(pygame.sprite.Sprite):
         self._changeimg = False
         self._selectimg = False
         self.image = self._activo[0] #inicia con la imgane normal del fantasma
-    
 
         self.rect = self.image.get_rect()
         self.rect.x = startx
         self.rect.y = starty
-        self.x = 0
-        self.y = 0
-        self.posx = startx
-        self.posy = starty
+        #self.x = 0
+        #self.y = 0
+        #self.posx = startx
+        #self.posy = starty
         self.posicion = [self.rect.x, self.rect.y]
         self.home = [self._d[0] + (8 * self._t), self._d[1] + (9 * self._t)]   #posicion central de la caja del mapa donde nacen los fantasmas
 
         self.counter = 0
-        self.time = 0
-        #self.player = jugador
-        #self.player_pos = [self.player.rect.x, self.player.rect.y]
-
+        self.time = pygame.time.get_ticks()
+        self.last_move = 'u'
+    def getState(self):
+        return self.state
     def load_imgs(self, size):
         ''' Cargamos imágenes comunes a todos los fantasmas'''
 
@@ -73,11 +79,21 @@ class Ghost(pygame.sprite.Sprite):
         self._comido.append(eyes_left)
         self._comido.append(eyes_right)
 
+
+    def estado_start(self):
+        '''
+        estado en el que inicia el fantasma
+        tambien cuando algun fantasma mata a pacman
+        '''
+        self.rect.x = self.posicion[0]
+        self.rect.y = self.posicion[1]
+        self.state = 'start'
+
     def estado_activo(self):
         '''
         estado en el que inicia el fantasma
-        se llama cuando el fantasma es comido y llega al origen (caja del mapa)
-        y tambien cuando finaliza el estado debil donde el fantasma es vulnerable
+        se llama cuando finaliza el estado debil donde el fantasma es vulnerable
+        stambien cuando el fantasma es comido y llega al origen (caja del mapa)
         '''
         self.parpadeo = False
         self.state = 'activo'
@@ -93,7 +109,10 @@ class Ghost(pygame.sprite.Sprite):
         '''
         estado cuando el fantasma es comido por pacman, solo se ven los ojos
         '''
+        self.rect.x = self.posicion[0]
+        self.rect.y = self.posicion[1]
         self.state = 'comido'
+        self.time = pygame.time.get_ticks()
     def estado_parpadear(self):
         '''
         se activa 2 segundos antes que finalice el estado debil
@@ -121,40 +140,40 @@ class Ghost(pygame.sprite.Sprite):
         #manh_dist = abs(distx) + abs(disty)
         if distx > 0 and disty > 0:
             if distx >= disty:
-                return ['left','up']
+                return ['l','u','d','r']
             if distx < disty:
-                return ['up','left']
+                return ['u','l','r','d']
         if distx < 0 and disty < 0:
             if abs(distx) >= abs(disty):
-                return ['right','down']
+                return ['r','d','u','l']
             if abs(distx) < abs(disty):
-                return ['down','right']
+                return ['d','r','l','u']
         if distx > 0 and disty < 0:
             if distx >= abs(disty):
-                return ['left','down']
+                return ['l','d','u','r']
             if distx < abs(disty):
-                return ['down','left']
+                return ['d','l','r','u']
         if distx < 0 and disty > 0:
             if abs(distx) >= disty:
-                return ['right','up']
+                return ['r','u','d','l']
             if abs(distx) < disty:
-                return ['up','right']
+                return ['u','r','l','d']
         if distx == 0 and disty > 0:
-            return ['up','same']
+            return ['u','r','l','d']
         if distx == 0 and disty < 0:
-            return ['down','same']
+            return ['d','l','r','u']
         if distx > 0 and disty == 0:
-            return ['left','same']
+            return ['l','u','d','r']
         if distx < 0 and disty == 0:
-            return ['right','same']
+            return ['r','d','u','l']
         if distx == 0 and disty == 0:
-            return ['same','same']
+            return ['same']
 
     def changeimages(self, player):
         p = player
-        if self.state == 'activo':
+        if self.state == 'activo' or self.state == 'start':
             ubicar = self.ubicarObjeto(p)
-            if ubicar[0] == 'down':
+            if ubicar[0] == 'd':
                 if self.counter == 15:
                     self._changeimg = True
                     self._selectimg = not self._selectimg
@@ -165,7 +184,7 @@ class Ghost(pygame.sprite.Sprite):
                     self.image = self._activo[0]
                 else:
                     self.image = self._activo[1]
-            if ubicar[0] == 'up':
+            if ubicar[0] == 'u':
                 if self.counter == 15:
                     self._changeimg = True
                     self._selectimg = not self._selectimg
@@ -176,7 +195,7 @@ class Ghost(pygame.sprite.Sprite):
                     self.image = self._activo[2]
                 else:
                     self.image = self._activo[3]
-            if ubicar[0] == 'left':
+            if ubicar[0] == 'l':
                 if self.counter == 15:
                     self._changeimg = True
                     self._selectimg = not self._selectimg
@@ -187,7 +206,7 @@ class Ghost(pygame.sprite.Sprite):
                     self.image = self._activo[4]
                 else:
                     self.image = self._activo[5]
-            if ubicar[0] == 'right':
+            if ubicar[0] == 'r':
                 if self.counter == 15:
                     self._changeimg = True
                     self._selectimg = not self._selectimg
@@ -225,49 +244,32 @@ class Ghost(pygame.sprite.Sprite):
 
         if self.state == 'comido':
             ubicar = self.ubicarObjeto(p, self.home[0], self.home[1])
-            if ubicar[0] == 'down':
+            if ubicar[0] == 'd':
                 self.image = self._comido[0]
-            if ubicar[0] == 'up':
+            if ubicar[0] == 'u':
                 self.image = self._comido[1]
-            if ubicar[0] == 'left':
+            if ubicar[0] == 'l':
                 self.image = self._comido[2]
-            if ubicar[0] == 'right':
+            if ubicar[0] == 'r':
                 self.image = self._comido[3]
+            '''
             if ubicar[0] == 'same':
                 #self.image = self._comido[]
                 pass
+            '''
 
-    '''
-    def changedir(self):
-        pass
-
-    def moves(self, player):
-        #funcion para definir los movimientos del fantasma
-
+    def update(self, player, width, turn):
         p = player
-        ubicar = self.ubicarObjeto(p)
-        if ubicar[0] == 'down':
-            self.rect.y += self.speed
-            self.posx += self.speed
-        elif ubicar[0] == 'up':
-            self.rect.y -= self.speed
-            self.posx += self.speed
-        elif ubicar[0] == 'left':
-            self.rect.x -= self.speed
-            self.posx += self.speed
-        elif ubicar[0] == 'right':
-            self.rect.x += self.speed
-            self.posx += self.speed
-    '''
 
-    def update(self, player, mazesprites, width):
-        p = player
-        '''
+        if self.rect.x < (self._d[0] - self._t + 5):
+                self.rect.x = self._d[0] + self._t * (width -1)
+        if self.rect.x + self._t > self._d[0] + self._t * (width)  :
+                self.rect.x = self._d[0]
         if self.stop == False:
-            self.moves(p)
-        '''
+            if turn:
+                self.moves(p)
 
-        if self.state is 'activo':
+        if self.state is 'activo' or self.state is 'start':
             self.changeimages(p)
 
         elif self.state is 'debil':
@@ -282,9 +284,114 @@ class Ghost(pygame.sprite.Sprite):
             self.changeimages(p)
 
         elif self.state is 'comido':
+            get_time = pygame.time.get_ticks()
+            comido_time = self.time + 4*1000         #tiempo que dura el estado comido del fantasma hasta recuperarse 3 segundos
+
+            if get_time >= comido_time:
+                self.estado_start()
             self.changeimages(p)
 
+    def valid_move(self, direction, door_open=False):
+        #solo realiza el movimiento si es valido
+        aux = 0
+        if direction == 'd':
+            if onBox(self, self._d, self._t):
+                self.valid_move(self, 'r')
+            self.rect.y += self.speed
+            aux = self.speed
+            while aux > 0:
+                ls = pygame.sprite.spritecollideany(self,self._m)
+
+                if ls != None:
+                    self.rect.y -= 1
+                    aux -= 1
+                else:
+                    return aux
+        if direction == 'u':
+            self.rect.y -= self.speed
+            aux = self.speed
+            while aux > 0:
+                ls = pygame.sprite.spritecollideany(self,self._m)
+
+                if ls != None:
+                    self.rect.y += 1
+                    aux -= 1
+                else:
+                    return aux
+        if direction == 'l':
+            self.rect.x -= self.speed
+            aux = self.speed
+            while aux > 0:
+                ls = pygame.sprite.spritecollideany(self,self._m)
+
+                if ls != None:
+                    self.rect.x += 1
+                    aux -= 1
+                else:
+                    return aux
+        if direction == 'r':
+            self.rect.x += self.speed
+            aux = self.speed
+            while aux > 0:
+                ls = pygame.sprite.spritecollideany(self,self._m)
+
+                if ls != None:
+                    self.rect.x -= 1
+                    aux -= 1
+                else:
+                    return aux
+        if aux == 0:
+            return -1
+
+    def moves(self, player):
+        #funcion para definir los movimientos del fantasma
+        p = player
+        if self.state == 'start':
+            #movimiento cuando el fantasma aparece en la caja
+            nextm = self.valid_move('u')
+            if nextm == -1 and onBox(self, self._d, self._t):
+                if player.rect.x < self.rect.x:
+                    nextm = self.valid_move('l')
+                else:
+                    nextm = self.valid_move('r')
+                self.estado_activo()
+            if nextm == -1:
+                self.estado_activo()
+
+        if self.state == 'activo':
+            #movimiento cuando el fantasma esta en estado activo
+            ubicar = self.ubicarObjeto(p)
+            for x in range(4):
+                nextm = self.valid_move(ubicar[x])
+                if nextm != -1:
+                    self.last_move = ubicar[x]
+                    return
+            if ubicar[0] == 'same':
+                nextm = self.valid_move(self.last_move)
+
+
+        if self.state == 'debil':
+            ubicar = self.ubicarObjeto(p)
+            away = ubicar[::-1]
+            for x in range(4):
+                nextm = self.valid_move(away[x])
+                if nextm != -1:
+                    self.last_move = away[x]
+                    return
+            if away[0] == 'same':
+                nextm = self.valid_move(self.last_move)
+
+        if self.state == 'comido':
+            #moviento cuando el fantasma es comido
+            pass
+
+
 class Blinky(Ghost):
+    __instance = None
+    def __new__(cls, size, dock, tile, startx, starty, mazesprites):
+        if Blinky.__instance is None:
+            Blinky.__instance = object.__new__(cls)
+        return Blinky.__instance
     def __init__(self, size, dock, tile, startx, starty, mazesprites):
         Ghost.__init__(self, size, dock, tile, startx, starty, mazesprites)
 
@@ -311,7 +418,15 @@ class Blinky(Ghost):
         self._activo.append(img_red_r1)
         self._activo.append(img_red_r2)
 
+
+
+
 class Clyde(Ghost):
+    __instance = None
+    def __new__(cls,  size, dock, tile, startx, starty, mazesprites):
+        if Clyde.__instance is None:
+            Clyde.__instance = object.__new__(cls)
+        return Clyde.__instance
     def __init__(self, size, dock, tile, startx, starty, mazesprites):
         Ghost.__init__(self, size, dock, tile, startx, starty, mazesprites)
 
@@ -338,7 +453,13 @@ class Clyde(Ghost):
         self._activo.append(img_orange_r1)
         self._activo.append(img_orange_r2)
 
+
 class Inky(Ghost):
+    __instance = None
+    def __new__(cls,  size, dock, tile, startx, starty, mazesprites):
+        if Inky.__instance is None:
+            Inky.__instance = object.__new__(cls)
+        return Inky.__instance
     def __init__(self, size, dock, tile, startx, starty, mazesprites):
         Ghost.__init__(self, size, dock, tile, startx, starty, mazesprites)
 
@@ -366,6 +487,11 @@ class Inky(Ghost):
         self._activo.append(img_cian_r2)
 
 class Pinky(Ghost):
+    __instance = None
+    def __new__(cls,  size, dock, tile, startx, starty, mazesprites):
+        if Pinky.__instance is None:
+            Pinky.__instance = object.__new__(cls)
+        return Pinky.__instance
     def __init__(self, size, dock, tile, startx, starty, mazesprites):
         Ghost.__init__(self, size, dock, tile, startx, starty, mazesprites)
 
@@ -392,6 +518,8 @@ class Pinky(Ghost):
         self._activo.append(img_pink_r1)
         self._activo.append(img_pink_r2)
 
+
+
 class GhostFactory(object):
     def get_ghost(self, id, dock, tilesize, size, mazesprites):
         '''
@@ -399,19 +527,19 @@ class GhostFactory(object):
         '''
         if id == 0:
             blinky_startx = dock[0] + (8 * tilesize)
-            blinky_starty = dock[1] + (8 * tilesize)
+            blinky_starty = dock[1] + (9 * tilesize)
             return Blinky(size, dock, tilesize, blinky_startx, blinky_starty, mazesprites)
         if id == 1:
-            clyde_startx = dock[0] + (6 * tilesize)
-            clyde_starty = dock[1] + (10 * tilesize)
+            clyde_startx =  dock[0] + (8 * tilesize)
+            clyde_starty = dock[1] + (9 * tilesize)
             return Clyde(size, dock, tilesize, clyde_startx, clyde_starty, mazesprites)
         if id == 2:
-            inky_startx = dock[0] + (8 * tilesize)
-            inky_starty = dock[1] + (10 * tilesize)
+            inky_startx =  dock[0] + (8 * tilesize)
+            inky_starty = dock[1] + (9 * tilesize)
             return Inky(size, dock, tilesize, inky_startx, inky_starty, mazesprites)
         if id == 3:
-            pinky_startx = dock[0] + (10 * tilesize)
-            pinky_starty = dock[1] + (10 * tilesize)
+            pinky_startx = dock[0] + (8 * tilesize)
+            pinky_starty = dock[1] + (9 * tilesize)
             return Pinky(size, dock, tilesize, pinky_startx, pinky_starty, mazesprites)
         # if id != 0 and id != 1 and id != 2 and id != 3:
         #         print('The input was not a valid integer. The ghost was not created..."'
